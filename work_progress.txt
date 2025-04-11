@@ -1,0 +1,6 @@
+Setup conda env
+wrote readme
+setup git lfs by:
+- git lfs install
+tracking models in models/:
+- git lfs track "models/**"
