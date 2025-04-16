@@ -33,23 +33,36 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-# Compare button
-if st.button("Compare", key="compare_button_1") and resume_file and job_description:
-    resume_text_raw = extract_text_from_pdf(resume_file)
-    resume_clean = clean_text(resume_text_raw)
-    job_clean = clean_text(job_description)
+def compare_button():
+    st.button("Compare", key="compare_button_1", on_click=compare)
 
-    # Embed cleaned text
-    resume_embed = model.encode(resume_clean, convert_to_tensor=True)
-    job_embed = model.encode(job_clean, convert_to_tensor=True)
+if "clicked" not in st.session_state:
+    st.session_state["clicked"] = False
 
-    similarity_score = util.cos_sim(resume_embed, job_embed).item()
+def compare():
+    st.session_state["clicked"] = True
 
-    st.subheader("🔍 Similarity Score")
-    st.metric(label="Match Percentage", value=f"{similarity_score * 100:.2f}%")
+if st.session_state["clicked"]:
+    if resume_file and job_description:
+        resume_text_raw = extract_text_from_pdf(resume_file)
+        resume_clean = clean_text(resume_text_raw)
+        job_clean = clean_text(job_description)
+    
+        # Embed cleaned text
+        resume_embed = model.encode(resume_clean, convert_to_tensor=True)
+        job_embed = model.encode(job_clean, convert_to_tensor=True)
+    
+        similarity_score = util.cos_sim(resume_embed, job_embed).item()
+    
+        st.subheader("🔍 Similarity Score")
+        st.metric(label="Match Percentage", value=f"{similarity_score * 100:.2f}%")
+    
+        with st.expander("🔎 Show extracted resume text"):
+            st.write(resume_clean)
+        with st.expander("🔎 Show extracted Job text"):
+            st.write(job_clean)
+    else:
+        st.warning("Please upload a resume and paste a job description.")
+        st.session_state["clicked"] = False
 
-    with st.expander("🔎 Show extracted resume text"):
-        st.write(resume_text_raw)
-
-elif st.button("Compare", key="compare_button_2"):
-    st.warning("Please upload a resume and paste a job description.")
+compare_button()
