@@ -55,5 +55,3 @@ We use:
 ![alt text](images/image-5.png)
 
 ![alt text](images/image-6.png)
-
-## Setup instructions
