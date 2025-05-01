@@ -1,0 +1,41 @@
+Software Engineer C++
+
+Our technology consists of our software suite MaxLab Live, a custom designed integrated circuit, and an FPGA-based data acquisition platform and generates vast amounts of data when electrically imaging neuronal tissue. Such data needs to be processed, analyzed and visualized online during operation. At the same time, our customers in drug discovery and neuroscience want to focus on their pharmaceutical and scientific questions, which requires to abstract and hide the technical complexity, while still providing sufficient flexibility to adapt the application to their specific needs. For this, we are seeking highly motivated software engineers to join our team and implement this challenging task.
+
+Your mission
+Write elegant and maintainable code for our high-performance data acquisition and analysis software
+Design and implement next generation UX and data visualizations
+Contribute your own ideas in our agile development process
+Design and implement software APIs, and work with application scientists to optimize software interfaces
+Work in a multidisciplinary environment, understand customer needs, continuously improve user experience
+Effectively deliver stories or tasks within projects on your own and you know when to ask for help
+Ensure the software we ship runs stable and meets our customer’s quality standards
+Employ simple design and pragmatic implementation techniques to drive business value
+Participate in code reviews
+Improve robustness and reliability of the codebase and devote time to polishing products and systems
+Mentor junior team members
+Be open and actively seek learning opportunities from senior team members
+Participate in interview processes, help the team make hiring decisions
+Our current tech stack
+C++ – we write maintainable and fast code to provide data analysis and visualizations in real time
+Qt – we embrace Qt for all our user interfaces
+Python – our analysis algorithms are relying on the Python data science stack
+Linux and bash
+CMake, OpenGL, boost, hdf5, … and more
+Your profile
+Proven track record as a software engineer with multiple years of experience
+Strong background in systems programming
+Strong programming skills in C++, familiarity with modern C++ standards 
+Experience with network programming, server client applications
+Interest in the field of neuroscience and biotechnology
+Knowledge in Linux, Bash and Python
+Great teammate, entrepreneurial mindset
+Keen to help create positive, supportive, engaging team environment
+Excellent communication skills in English (written and spoken)
+Experience with some of the following topics is a plus:
+
+Experience with data analysis and visualization
+Experience with computational algorithm development
+Experience in UI/UX design with Qt
+Experience with OpenGL
+Experience with agile development approaches
