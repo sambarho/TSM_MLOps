@@ -10,6 +10,7 @@ from huggingface_hub import snapshot_download
 from pathlib import Path
 from comparators import title_match_scores
 from normalizers  import normalize_skills, normalize_soft_skills, normalize_title
+import time
 
 
 st.set_page_config(page_title="Resume vs Job Description", layout="centered")
@@ -110,6 +111,7 @@ Respond only with valid JSON. Do not include any extra text or explanation.
 
 # Use Ollama to extract info from job description
 def extract_job_description_info(jd_text: str, model_name: str = 'mistral') -> dict:
+    
     client = Client()
     prompt = f"""
 Extract the following fields from the job description and return them as a valid JSON object:
@@ -326,12 +328,20 @@ if st.session_state["clicked"]:
             job_clean = clean_text(job_description)
 
             try:
+                t0=time.time()
+                print(f"[LOG]: Ollama Mistral call started")
                 resume_info = extract_resume_info(resume_clean)
                 job_info = extract_job_description_info(job_clean)
+                st.write(f"✅ Ollama Mistral call took {time.time() - t0:.1f}s")
+                print(f"[LOG]: Ollama Mistral call finished and took {time.time() - t0:.1f}s")
+
                 #score = compare_resume_and_job(resume_info, job_info, model)
                 st.success("✅ Comparison Complete")
+                t1=time.time()
+                print(f"[LOG]: MiniLM embeddings call started")
                 scores = compare_resume_and_job(resume_info, job_info, model)
-
+                st.write(f"✅ MiniLM embeddings took {time.time() - t1:.1f}s")
+                print(f"[LOG]: MiniLM embeddings call finished and took {time.time() - t1:.1f}s")
                 # Final
                 st.success("✅ Comparison Complete")
                 st.metric("🎯 Total Match", f"{scores['final']*100:.2f}%")

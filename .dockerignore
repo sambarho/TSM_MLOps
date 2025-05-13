@@ -1,0 +1,12 @@
+# .dockerignore
+
+*
+!Dockerfile
+!requirements.txt
+!requirements.prod.txt
+!resume_matcher/app/**
+!data/job_descriptions/**
+!data/resumes/**
+!resume_matcher/data/**
+!start.sh
+

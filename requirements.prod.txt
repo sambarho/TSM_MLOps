@@ -1,0 +1,5 @@
+streamlit==1.45.0
+sentence-transformers==4.0.2
+huggingface-hub==0.30.2
+ollama==0.4.7
+pdfplumber==0.11.6
