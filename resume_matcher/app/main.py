@@ -37,23 +37,6 @@ def load_model():
     #load from disk (or from the freshly-downloaded folder)
     return SentenceTransformer(model_path)
 
-# @st.cache_resource
-# def load_cross_encoder():
-#     local_subdir = models_root / "cross-encoder/stsb-roberta-large"
-#     if local_subdir.is_dir():
-#         # 1) already downloaded
-#         model_path = str(local_subdir)
-#     else:
-#         # 2) pull from HF and get back the true download path
-#         models_root.mkdir(parents=True, exist_ok=True)
-#         model_path = snapshot_download(
-#             repo_id="cross-encoder/stsb-roberta-large",
-#             cache_dir=str(models_root),
-#             repo_type="model"
-#         )
-#     return CrossEncoder("cross-encoder/stsb-roberta-large")
-# cross_encoder = load_cross_encoder()
-
 model = load_model()
 st.title("📄 Resume & Job Description Matcher")
 
@@ -186,15 +169,6 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
     preferred_score = len(preferred_matches) / max(1, len(preferred_skills))
     skill_score = (required_score * 0.8) + (preferred_score * 0.2)
 
-    #resume_exp = resume.get("years_of_experience", 0)
-    #job_exp = job.get("required_experience", 0)
-    #if isinstance(resume_exp, str):
-    #    resume_exp = int(''.join(filter(str.isdigit, resume_exp)) or 0)
-
-    #exp_score = 1.0 if resume_exp >= job_exp else 0.5 if resume_exp >= job_exp * 0.75 else 0.0
-
-
-
     # Pull out raw values
     raw_resume_exp = resume.get("years_of_experience", 0)
     raw_job_exp    = job.get("required_experience", 0)
@@ -229,28 +203,6 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
         st.error(f"resume_exp={resume_exp!r} ({type(resume_exp)})  job_exp={job_exp!r} ({type(job_exp)})")
         raise
 
-     
-    # resume_titles = resume.get("past_job_titles", [])
-    # job_title = job.get("title", "")
-    
-    # # Build all pairs of (resume_title, job_title)
-    # pairs = [[rt, job_title] for rt in resume_titles if rt]
-    # if pairs:
-    #     # 2) Run the cross-encoder (returns a list of floats, typically 0–5)
-    #     ce_scores = cross_encoder.predict(pairs)
-
-    #     # 3) Take the maximum—as the “best match”
-    #     best = max(ce_scores)
-
-    #     # 4) Normalize into [0,1] (since STS models score ~0–5)
-    #     # best_ce is the raw CE score (0–5)
-    #     if best >= 3.5:
-    #         title_score = 1.0
-    #     elif best >= 2.0:
-    #         title_score = 0.5
-    #     else:
-    #         title_score = 0.0
-    
 
     bi_pct, title_pair = title_match_scores(
         resume_info.get("past_job_titles", []),

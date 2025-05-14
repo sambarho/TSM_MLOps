@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+# Default to Azure port if not set
+PORT=${PORT:-8501}
+
+
 echo ">>> Starting Ollama…" >&2
 ollama serve > /tmp/ollama.log 2>&1 &
 
@@ -21,3 +25,4 @@ exec streamlit run app/main.py \
      --global.developmentMode=false
 echo ">>> Streamlit started." >&2
 echo ">>> Ollama log:" >&2
+
