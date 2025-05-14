@@ -22,8 +22,8 @@ def title_match_scores(resume_titles, job_title, bi_model, logger=None):
         best_bi_pct = max(best_bi, 0.0) * 100.0
 
         # Log if you passed a streamlit logger or standard logger
-        if logger:
-            logger(f"MiniLM compared   → {best_pair[0]!r} vs {best_pair[1]!r} = {best_bi_pct:.2f}%")
+        #if logger:
+        #    logger(f"MiniLM compared   → {best_pair[0]!r} vs {best_pair[1]!r} = {best_bi_pct:.2f}%")
     else:
         best_bi_pct = 0.0
         best_pair   = (None, norm_job)

@@ -11,6 +11,7 @@ from pathlib import Path
 from comparators import title_match_scores
 from normalizers  import normalize_skills, normalize_soft_skills, normalize_title
 import time
+from database import MatchRecord, Session, save_match_record    #<-- add
 
 
 st.set_page_config(page_title="Resume vs Job Description", layout="centered")
@@ -162,20 +163,33 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
 
 
 
-    required_matches = sim_list(resume_skills, required_skills)
-    preferred_matches = sim_list(resume_skills, preferred_skills)
+    #required_matches = sim_list(resume_skills, required_skills)
+    #preferred_matches = sim_list(resume_skills, preferred_skills)
 
-    required_score = len(required_matches) / max(1, len(required_skills))
-    preferred_score = len(preferred_matches) / max(1, len(preferred_skills))
-    skill_score = (required_score * 0.8) + (preferred_score * 0.2)
+    #required_score = len(required_matches) / max(1, len(required_skills))
+    #preferred_score = len(preferred_matches) / max(1, len(preferred_skills))
+    #skill_score = (required_score * 0.8) + (preferred_score * 0.2)
+    # for scoring we only care “did I match each JD skill at least once?”
+    def binary_score(src, target, threshold=0.7):
+            hits = 0
+            for t in target:
+                # if ANY resume skill is close enough to this JD skill, count it
+                if any(util.cos_sim(model.encode(s), model.encode(t)) >= threshold for s in src):
+                    hits += 1
+            return hits / max(1, len(target))
+
+    required_score  = binary_score(resume_skills, required_skills)
+    preferred_score = binary_score(resume_skills, preferred_skills)
+    # overall skills = weighted average, still bounded [0..1]
+    skill_score     = (required_score * 0.8) + (preferred_score * 0.2)
 
     # Pull out raw values
     raw_resume_exp = resume.get("years_of_experience", 0)
     raw_job_exp    = job.get("required_experience", 0)
 
     # Log them before any casting
-    #st.write("🔍 DEBUG raw_resume_exp:", raw_resume_exp, "(", type(raw_resume_exp), ")")
-    #st.write("🔍 DEBUG raw_job_exp:   ", raw_job_exp,    "(", type(raw_job_exp),    ")")
+    #st.write("DEBUG raw_resume_exp:", raw_resume_exp, "(", type(raw_resume_exp), ")")
+    #st.write("DEBUG raw_job_exp:   ", raw_job_exp,    "(", type(raw_job_exp),    ")")
 
     # (Your existing parsing logic here)
     if isinstance(raw_resume_exp, str):
@@ -208,9 +222,9 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
         resume_info.get("past_job_titles", []),
         job_info   .get("title",         ""),
         model,
-        logger=lambda msg: st.write("🔍 DEBUG:", msg)
+        #logger=lambda msg: st.write("🔍 DEBUG:", msg)
     )
-    st.write(f"🔍 Best Title Pair (MiniLM): {title_pair[0]!r} ↔ {title_pair[1]!r} @ {bi_pct:.2f}%")
+    ### st.write(f"🔍 Best Title Pair (MiniLM): {title_pair[0]!r} ↔ {title_pair[1]!r} @ {bi_pct:.2f}%") for demo
 
     def simplify_education(text):
         text = text.lower()
@@ -303,7 +317,7 @@ if st.session_state["clicked"]:
                 col1.metric("🛠 Required Skills",f"{scores['required_skills']*100:.2f}%")
                 col1.metric("⭐ Preferred Skills",f"{scores['preferred_skills']*100:.2f}%")
                 col1.metric("🔧 Overall Skills",f"{scores['overall_skills']*100:.2f}%")
-                col1.metric("🔡 Title Match (MiniLM)",f"{scores['title_bi']:.2f}%")
+                ### col1.metric("🔡 Title Match (MiniLM)",f"{scores['title_bi']:.2f}%") demo
 
                 #col2.metric("🔡 Title Match (Cross-Encoder)",f"{scores['title_ce']:.2f}%")
                 col2.metric("📅 Experience",f"{scores['experience']*100:.2f}%")
@@ -311,14 +325,55 @@ if st.session_state["clicked"]:
                 col2.metric("🎓 Education",f"{scores['education']*100:.2f}%")
                 col2.metric("🤝 Soft Skills",f"{scores['soft_skills']*100:.2f}%")
 
-                
-                with st.expander("🔍 Extracted Resume Info"):
-                    st.json(resume_info)
-                with st.expander("📋 Extracted Job Info"):
-                    st.json(job_info)
+                ### DEMO ###
+                ### with st.expander("🔍 Extracted Resume Info"):
+                ###    st.json(resume_info)
+                ### with st.expander("📋 Extracted Job Info"):
+                ###    st.json(job_info)
             except Exception as e:
                 st.error(f"❌ Error during comparison: {e}")
                 st.session_state["clicked"] = False
+        save_match_record(resume_file, job_description, resume_info, job_info, scores)  #<-- add
+
+        
     else:
         st.warning("Please upload a resume and paste a job description.")
         st.session_state["clicked"] = False
+
+################################################
+# View previous comparisons in a neat format
+st.subheader("📂 View Previous Comparisons")
+
+session = Session()
+records = session.query(MatchRecord).order_by(MatchRecord.timestamp.desc()).all()
+
+for rec in records:
+    job_info = json.loads(rec.job_info)
+    scores = json.loads(rec.comparison_scores)
+    
+    job_title = job_info.get('title', 'No title available')
+    overall_score = scores.get('final', 0) * 100
+
+    # This is the only expander now
+    with st.expander(f"📝 {job_title} — {overall_score:.2f}% match"):
+        st.write(f"📄 **Resume File Name**: {rec.resume_name}")
+
+        st.write("📊 **Comparison Scores**:")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("🛠 Required Skills", f"{scores['required_skills']*100:.2f}%")
+        col1.metric("⭐ Preferred Skills", f"{scores['preferred_skills']*100:.2f}%")
+        col1.metric("🔧 Overall Skills", f"{scores['overall_skills']*100:.2f}%")
+
+        col2.metric("📅 Experience", f"{scores['experience']*100:.2f}%")
+        col2.metric("🎓 Education", f"{scores['education']*100:.2f}%")
+        col2.metric("🤝 Soft Skills", f"{scores['soft_skills']*100:.2f}%")
+
+        col3.metric("🔡 Title Match", f"{scores['title_bi']:.2f}%")
+        col3.metric("🎯 Final Score", f"{scores['final']*100:.2f}%")
+
+        st.write(f"🕓 **Date and Time**: {rec.timestamp.strftime('%Y-%m-%d %H:%M')}")
+
+session.close()
+################################################
