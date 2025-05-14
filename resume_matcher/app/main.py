@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import pandas as pd
 import pdfplumber
 import re
 import json
@@ -326,10 +327,82 @@ if st.session_state["clicked"]:
                 col2.metric("🤝 Soft Skills",f"{scores['soft_skills']*100:.2f}%")
 
                 ### DEMO ###
-                ### with st.expander("🔍 Extracted Resume Info"):
-                ###    st.json(resume_info)
-                ### with st.expander("📋 Extracted Job Info"):
-                ###    st.json(job_info)
+                #with st.expander("🔍 Extracted Resume Info"):
+                #    st.json(resume_info)
+                #with st.expander("📋 Extracted Job Info"):
+                #    st.json(job_info)
+                resume_df = pd.DataFrame({
+                    "Field": [
+                        "Name",
+                        "Years of Experience",
+                        "Education",
+                        "Skills",
+                        "Soft Skills",
+                        "Past Job Titles",
+                    ],
+                    "Value": [
+                        resume_info.get("name", ""),
+                        resume_info.get("years_of_experience", ""),
+                        resume_info.get("education", ""),
+                        ", ".join(resume_info.get("skills", [])),
+                        ", ".join(resume_info.get("soft_skills", [])),
+                        ", ".join(resume_info.get("past_job_titles", [])),
+                    ]
+                })
+                st.subheader("🔍 Extracted Resume Info")
+                st.table(resume_df)
+
+                # Job Info table
+                job_df = pd.DataFrame({
+                    "Field": [
+                        "Title",
+                        "Required Experience",
+                        "Education",
+                        "Required Skills",
+                        "Preferred Skills",
+                        "Soft Skills",
+                    ],
+                    "Value": [
+                        job_info.get("title", ""),
+                        job_info.get("required_experience", ""),
+                        job_info.get("education", ""),
+                        ", ".join(job_info.get("required_skills", [])),
+                        ", ".join(job_info.get("preferred_skills", [])),
+                        ", ".join(job_info.get("soft_skills", [])),
+                    ]
+                })
+                st.subheader("📋 Extracted Job Description Info")
+                st.table(job_df)
+                
+                thresh = 0.7
+                resume_sk = normalize_skills(resume_info.get("skills", []))
+                req_sk    = normalize_skills(job_info.get("required_skills", []))
+                pref_sk   = normalize_skills(job_info.get("preferred_skills", []))
+
+                def find_missing(target_skills, source_skills):
+                    missing = []
+                    for t in target_skills:
+                        # count as “covered” if any resume skill is semantically similar
+                        if not any(util.cos_sim(model.encode(s), model.encode(t)).item() >= thresh
+                                for s in source_skills):
+                            missing.append(t)
+                    return missing
+
+                missing_required  = find_missing(req_sk, resume_sk)
+                missing_preferred = find_missing(pref_sk, resume_sk)
+
+                if missing_required:
+                    st.error(
+                        "🚨 You’re missing these **required** skills:\n\n" +
+                        ", ".join(missing_required)
+                    )
+                if missing_preferred:
+                    st.info(
+                        "💡 Consider adding or learning these **preferred** skills:\n\n" +
+                        ", ".join(missing_preferred)
+                    )
+
+
             except Exception as e:
                 st.error(f"❌ Error during comparison: {e}")
                 st.session_state["clicked"] = False
