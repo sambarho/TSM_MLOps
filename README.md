@@ -40,6 +40,11 @@ We use:
 - environment.yml for local reproducibility
 
 
+## Run Tests Locally
+
+With activated environment `resume-matcher`, navigate to directory `resume-matcher` and run the command `resume-matcher`.
+
+
 ## Slides
 
 ![alt text](images/image.png)
