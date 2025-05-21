@@ -299,15 +299,15 @@ if st.session_state["clicked"]:
                 print(f"[LOG]: Ollama Mistral call started")
                 resume_info = extract_resume_info(resume_clean)
                 job_info = extract_job_description_info(job_clean)
-                st.write(f"✅ Ollama Mistral call took {time.time() - t0:.1f}s")
-                print(f"[LOG]: Ollama Mistral call finished and took {time.time() - t0:.1f}s")
+                # demo
+                ## st.write(f"✅ Ollama Mistral call took {time.time() - t0:.1f}s") 
+                ##print(f"[LOG]: Ollama Mistral call finished and took {time.time() - t0:.1f}s")
 
-                #score = compare_resume_and_job(resume_info, job_info, model)
-                st.success("✅ Comparison Complete")
+                ##st.success("✅ Comparison Complete")
                 t1=time.time()
                 print(f"[LOG]: MiniLM embeddings call started")
                 scores = compare_resume_and_job(resume_info, job_info, model)
-                st.write(f"✅ MiniLM embeddings took {time.time() - t1:.1f}s")
+                ##st.write(f"✅ MiniLM embeddings took {time.time() - t1:.1f}s")
                 print(f"[LOG]: MiniLM embeddings call finished and took {time.time() - t1:.1f}s")
                 # Final
                 st.success("✅ Comparison Complete")
