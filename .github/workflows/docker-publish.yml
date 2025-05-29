@@ -36,8 +36,8 @@ jobs:
 
       - name: Smoke-test Docker image
         run: |
-          # Just verify the container can run Python
-          docker run --rm tsm-mlops:test python --version
+          # Override entrypoint to prevent automatic service startup
+          docker run --rm --entrypoint python tsm-mlops:test --version
 
       # These two steps only fire after secrets are added
       - name: Log in to Docker Hub
