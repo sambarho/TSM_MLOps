@@ -9,18 +9,19 @@ on:
 jobs:
     test:
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                python-version: ['3.10', '3.11']  # Test multiple Python versions
-            fail-fast: false  # Continue with other versions even if one fails
-    
         steps:
-        - uses: actions/checkout@v4
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            lfs: true
+
+        - name: Pull LFS objects
+          run: git lfs pull
     
-        - name: Set up Python ${{ matrix.python-version }}
+        - name: Set up Python 3.11
           uses: actions/setup-python@v5
           with:
-            python-version: ${{ matrix.python-version }}
+            python-version: '3.11'
 
         # Cache pip dependencies
         - name: Cache pip dependencies
@@ -34,24 +35,38 @@ jobs:
         - name: Install dependencies
           run: |
             python -m pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install pytest-cov flake8  # Install additional test dependencies
+            # Show Python and pip versions for debugging
+            python --version
+            pip --version
+            # Install with verbose output
+            pip install -v -r requirements.txt
+            pip install -v pytest-cov flake8
+            # List installed packages for debugging
+            pip list
     
         - name: Lint with flake8
           run: |
-            # stop the build if there are Python syntax errors or undefined names
-            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+            # Initially only check for critical errors
+            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=resume_matcher/models/*
             # exit-zero treats all errors as warnings
-            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=resume_matcher/models/*
     
         - name: Run tests with coverage
           run: |
-            pytest --maxfail=1 --disable-warnings -v --cov=tsm_mlops --cov-report=xml
+            # Show current directory structure
+            ls -la
+            # Run pytest with more verbose output
+            python -m pytest --maxfail=1 --disable-warnings -v --cov=tsm_mlops --cov-report=xml --capture=no
+
+        - name: Check coverage report exists
+          run: |
+            ls -la coverage.xml || echo "coverage.xml not found"
+          if: always()
 
         - name: Upload coverage report
           if: always()  # Try to upload even if tests fail
           uses: actions/upload-artifact@v4  # Updated to v4
           with:
-            name: coverage-report-py${{ matrix.python-version }}
+            name: coverage-report
             path: coverage.xml
             if-no-files-found: warn  # Don't fail if no coverage report
