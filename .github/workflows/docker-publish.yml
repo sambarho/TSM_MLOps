@@ -36,7 +36,7 @@ jobs:
 
       - name: Smoke-test CLI
         run: |
-          # Just verify the module can be imported
+          # Just verify the module can be imported without starting Streamlit
           docker run --rm tsm-mlops:test python -c "import tsm_mlops; print('CLI package can be imported')"
 
       # These two steps only fire after secrets are added
