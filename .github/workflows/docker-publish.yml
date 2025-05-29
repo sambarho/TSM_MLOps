@@ -12,6 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Debug step to check secrets
+      - name: Check if secrets exist
+        run: |
+          if [ "${{ secrets.DOCKERHUB_USERNAME }}" != "" ]; then
+            echo "DockerHub username is configured"
+          else
+            echo "DockerHub username is not configured"
+          fi
+          if [ "${{ secrets.DOCKERHUB_TOKEN }}" != "" ]; then
+            echo "DockerHub token is configured"
+          else
+            echo "DockerHub token is not configured"
+          fi
+
       # Always build so CI proves the Dockerfile
       - name: Build image
         uses: docker/build-push-action@v5
