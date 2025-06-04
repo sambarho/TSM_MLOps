@@ -1,0 +1,120 @@
+name: pytest
+
+on:
+  push:
+    branches: '*'
+  pull_request:
+    branches: '*'
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            lfs: true
+
+        - name: Pull LFS objects
+          run: git lfs pull
+    
+        - name: Set up Python 3.11
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+            cache: 'pip'
+            cache-dependency-path: |
+              requirements.txt
+              setup.py
+
+        - name: Cache pip packages
+          uses: actions/cache@v3
+          with:
+            path: |
+              ~/.cache/pip
+              ~/.local/lib/python3.11/site-packages
+            key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}-${{ hashFiles('setup.py') }}
+            restore-keys: |
+              ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}-
+              ${{ runner.os }}-pip-
+    
+        - name: Install dependencies
+          run: |
+            echo "::group::Upgrading pip and checking versions"
+            python -m pip install --upgrade pip
+            python --version
+            pip --version
+            echo "::endgroup::"
+            
+            echo "::group::Installing requirements"
+            pip install -v -r requirements.txt
+            pip install -v pytest-cov flake8
+            echo "::endgroup::"
+            
+            echo "::group::Installed packages"
+            pip list
+            echo "::endgroup::"
+    
+        - name: Lint with flake8
+          run: |
+            echo "::group::Running critical error checks"
+            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=resume_matcher/models/*
+            echo "::endgroup::"
+            
+            echo "::group::Running style checks (non-blocking)"
+            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=resume_matcher/models/*
+            echo "::endgroup::"
+    
+        - name: Show test directory structure
+          run: |
+            echo "::group::Test environment information"
+            echo "Current directory: $(pwd)"
+            echo -e "\nDirectory contents:"
+            ls -R tests/ || echo "No tests directory found"
+            echo -e "\nPython path:"
+            python -c "import sys; print('\n'.join(sys.path))"
+            echo "::endgroup::"
+
+        - name: Run tests with coverage
+          run: |
+            echo "::group::Test collection"
+            python -m pytest --collect-only -v
+            echo "::endgroup::"
+            
+            echo "::group::Running tests with coverage"
+            python -m pytest -v --cov=resume_matcher --cov-report=term --cov-report=xml
+            test_exit_code=$?
+            
+            if [ $test_exit_code -ne 0 ]; then
+              echo "::error::Tests failed with exit code $test_exit_code"
+              echo "::group::Detailed test output"
+              python -m pytest -v --tb=short
+              echo "::endgroup::"
+              exit $test_exit_code
+            fi
+            echo "::endgroup::"
+
+        - name: Generate coverage report
+          if: always()
+          run: |
+            echo "::group::Coverage report generation"
+            if [ -f .coverage ]; then
+              python -m coverage xml
+              echo "Coverage report generated successfully"
+              echo -e "\nCoverage summary:"
+              python -m coverage report --fail-under=80 || echo "Warning: Coverage is below 80%"
+            else
+              echo "::warning::No .coverage file found"
+              ls -la
+            fi
+            echo "::endgroup::"
+
+        - name: Upload coverage report
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: coverage-report
+            path: |
+              coverage.xml
+              .coverage
+            if-no-files-found: warn

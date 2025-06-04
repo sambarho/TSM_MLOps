@@ -1,0 +1,46 @@
+Job Title: Senior Software Developer – FinTech Applications
+Company: Bank of America
+Location: New York, NY (Hybrid)
+Employment Type: Full-time
+
+About the Role:
+We are seeking a highly motivated and experienced Senior Software Developer to join our growing engineering team at [Company Name], a fast-paced FinTech firm transforming how businesses and individuals manage payments, invoicing, and financial operations. You’ll bring strong experience in scalable front-end and back-end development, with a proven track record of delivering impactful products in cloud environments.
+
+What You’ll Do:
+
+Design and develop customer-facing FinTech applications with a focus on performance, security, and usability
+
+Collaborate cross-functionally with product and design teams to build modern, responsive features that support thousands of users
+
+Leverage your expertise in Python (Django), React/Redux, SQL, and cloud platforms (GCP/AWS) to drive end-to-end delivery
+
+Optimize application performance and support infrastructure cost reduction strategies
+
+Mentor junior developers and contribute to the evolution of coding standards and best practices
+
+Continuously improve the CI/CD pipeline and participate in code reviews to ensure maintainability and scalability
+
+What We’re Looking For:
+
+5+ years of software development experience, ideally in a FinTech, SaaS, or payments-focused environment
+
+Proficiency in full-stack development: Python (Django), JavaScript (React/Redux/Node.js), and strong SQL skills
+
+Cloud deployment and migration experience (GCP preferred, AWS a plus)
+
+Experience improving operational efficiency through automation and performance tuning
+
+Passion for clean, well-documented code and strong collaboration skills
+
+BS in Computer Science or a related field
+
+Bonus Points For:
+
+Experience with payment processing, invoicing systems, or financial automation
+
+Background in mentoring or leading engineering teams
+
+Familiarity with TypeScript and containerized deployments
+
+Why Join Us:
+At Bank of America, you’ll be at the forefront of financial innovation. We offer a supportive team culture, opportunities for career growth, and the chance to build products that genuinely improve our users' financial lives.
