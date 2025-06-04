@@ -1,8 +1,14 @@
 # Résumé Matcher
 
 Résumé Matcher is the result of a project in MSE module TSM_MachLeData.
-![Workflow Diagram](resume_matcher/data/workflow_diagram.png)
 
+**Use case:** receive feedback on your CV ('résumé') regarding its fit with a job advertisement.
+
+**Usage:** After uploading the CV document to the Résumé Matcher web app and pasting the job ad, a detailed matching score per relevant field is calculated. In addition, the app provides suggestions for improvement of the CV in low scoring areas.
+
+**Architecture:** CV and job ad are summarized and transformed to JSON objects by the Mistral language model. After preprocessing of the extracted texts, the two pieces of information are compared based on semantic similarity by a sentence transformer model, and matching scores are calculated for each area of interest.
+
+![alt text](/resume_matcher/images/image-2.png)
 
 ## Setup Instructions
 
@@ -92,3 +98,16 @@ The following workflows exist to support the CI/CD process:
 - `docker-publish.yml`
   - is triggered on `push` and `pull request` on branch `main`
   - builds a Docker image, runs a smoke test using a special test entry point, and pushes the image to Docker Hub
+
+
+## Web App
+
+Here is a quick demo of the web interface.
+
+Upload CV document and paste job advertisement:
+
+![alt text](/resume_matcher/images/image.png)
+
+Calculated matching scores:
+
+![alt text](/resume_matcher/images/image-1.png)
