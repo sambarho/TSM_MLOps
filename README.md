@@ -1,6 +1,8 @@
 # Résumé Matcher
 
 Résumé Matcher is the result of a project in MSE module TSM_MachLeData.
+![Workflow Diagram](resume_matcher/data/workflow_diagram.png)
+
 
 ## Setup Instructions
 
@@ -42,6 +44,38 @@ pip freeze > requirements.txt
 Export minimal Conda environment (only what was explicitly installed)
 ```bash
 conda env export --from-history > environment.yml
+```
+## Run code
+### Docker Version (recommended)
+If you want to try the very latest version of Résumé Matcher without installing anything locally, simply pull the prebuilt Docker image and run it:
+
+1. Pull the latest image
+
+```bash
+docker pull sambarho/tsm-mlops:latest
+```
+2. Run the container
+
+```bash
+docker run --rm -p 8501:8501 sambarho/tsm-mlops:latest
+```
+- This assumes the app listens on port 8501 (e.g. a Streamlit UI)
+- If your app listens on a different port, replace 8501:8501 with HOST_PORT:CONTAINER_PORT.
+
+3. Open your browser
+Navigate to http://localhost:8501 (or whatever port you exposed) and you should see the Résumé Matcher interface right away.
+
+### Run from Source
+If you want to make changes or see the code in action:
+1. Activate your conda env
+```bash
+cd resume-matcher
+conda activate resume-matcher
+```
+
+2. From inside the resume-matcher folder:
+```bash
+streamlit run app/main.py   
 ```
 
 ### Run Tests Locally
