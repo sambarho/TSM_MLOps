@@ -2,6 +2,7 @@ import streamlit as st
 import pdfplumber
 import re
 from sentence_transformers import SentenceTransformer, util
+import os
 
 st.set_page_config(page_title="Resume vs Job Description", layout="centered")
 

@@ -1,136 +1,26 @@
 import streamlit as st
 import os
 import pandas as pd
-import pdfplumber
 import re
 import json
-from sentence_transformers import SentenceTransformer, util, CrossEncoder
-from ollama import Client
-from sentence_transformers import SentenceTransformer
-from huggingface_hub import snapshot_download
-from pathlib import Path
+from sentence_transformers import util
 from comparators import title_match_scores
-from normalizers  import normalize_skills, normalize_soft_skills, normalize_title
+from normalizers  import normalize_skills, normalize_soft_skills
+from model_loader import load_model
+from extractors import extract_text_from_pdf, clean_text
+from ollama_api import extract_resume_info, extract_job_description_info
 import time
-from database import MatchRecord, Session, save_match_record    #<-- add
-
+from database import MatchRecord, Session, save_match_record  
 
 st.set_page_config(page_title="Resume vs Job Description", layout="centered")
-
-models_root = Path("..") / "models"
-
-@st.cache_resource
-def load_model():
-    local_subdir = models_root / "all-MiniLM-L6-v2"
-
-    if local_subdir.is_dir():
-        # 1) already downloaded
-        model_path = str(local_subdir)
-    else:
-        # 2) pull from HF and get back the true download path
-        models_root.mkdir(parents=True, exist_ok=True)
-        model_path = snapshot_download(
-            repo_id="sentence-transformers/all-MiniLM-L6-v2",
-            cache_dir=str(models_root),
-            repo_type="model"
-        )
-
-
-    #load from disk (or from the freshly-downloaded folder)
-    return SentenceTransformer(model_path)
 
 model = load_model()
 st.title("📄 Resume & Job Description Matcher")
 
-# Upload PDF resume
 resume_file = st.file_uploader("Upload your resume (PDF)", type=["pdf"])
 
-# Job description input
 job_description = st.text_area("Paste the job description below", height=300)
 
-# Extract text from PDF
-def extract_text_from_pdf(pdf_file):
-    with pdfplumber.open(pdf_file) as pdf:
-        return "\n".join([page.extract_text() or "" for page in pdf.pages])
-
-# Clean text
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r"[\n•\-]+", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-# Use Ollama to extract info from resume
-def extract_resume_info(resume_text: str, model_name: str = 'mistral') -> dict:
-    client = Client()
-    prompt = f"""
-Extract the following fields from the resume below and return them as a valid JSON object:
-
-- name
-- years_of_experience (must be the total number of years)
-- skills
-- past_job_titles
-- education (only write "Bachelor's, Master's, PhD in ...")
-- soft_skills
-
-Example output:
-{{
-  "name": "Emma Liu",
-  "years_of_experience": 3,
-  "skills": ["Go", "Kubernetes", "PostgreSQL"],
-  "past_job_titles": ["Platform Engineer", "Backend Developer"],
-  "education": "Master's in Software Engineering",
-  "soft_skills": ["teamplayer", "problem solver"]
-}}
-
-Resume:
-{resume_text}
-
-Respond only with valid JSON. Do not include any extra text or explanation.
-"""
-    response = client.chat(
-        model=model_name,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return json.loads(response['message']['content'])
-
-# Use Ollama to extract info from job description
-def extract_job_description_info(jd_text: str, model_name: str = 'mistral') -> dict:
-    
-    client = Client()
-    prompt = f"""
-Extract the following fields from the job description and return them as a valid JSON object:
-
-- title
-- required_experience (must be a number of years)
-- required_skills
-- preferred_skills
-- education (only write "Bachelor's, Master's, PhD in ...")
-- soft_skills
-
-Example output:
-{{
-  "title": "Backend Engineer",
-  "required_experience": 2,
-  "required_skills": ["Python", "AWS", "PostgreSQL"],
-  "preferred_skills": ["Kubernetes", "Docker"],
-  "education": "Bachelor's in Computer Science",
-  "soft_skills": ["communication", "problem-solving"]
-}}
-
-Job Description:
-{jd_text}
-
-Respond only with valid JSON. Do not include any additional explanation or formatting.
-"""
-    response = client.chat(
-        model=model_name,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return json.loads(response['message']['content'])
-
-
-# Compare resume and job JSON
 def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False) -> float:
     def sim(a, b):
         return util.cos_sim(model.encode(a, convert_to_tensor=True), model.encode(b, convert_to_tensor=True)).item()
@@ -143,10 +33,6 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
                     matches.append((item1, item2))
         return matches
 
-    #resume_skills = resume.get("skills", [])
-    #required_skills = job.get("required_skills", [])
-    #preferred_skills = job.get("preferred_skills", [])
-
     resume_skills    = normalize_skills(resume.get("skills", []))
     required_skills  = normalize_skills(job.get("required_skills", []))
     preferred_skills = normalize_skills(job.get("preferred_skills", []))
@@ -158,19 +44,10 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
                 hits += 1
         return hits / max(1, len(target))
 
-    # 3) Now score
     required_score  = score_list_against_list(resume_skills, required_skills)
     preferred_score = score_list_against_list(resume_skills, preferred_skills)
 
-
-
-    #required_matches = sim_list(resume_skills, required_skills)
-    #preferred_matches = sim_list(resume_skills, preferred_skills)
-
-    #required_score = len(required_matches) / max(1, len(required_skills))
-    #preferred_score = len(preferred_matches) / max(1, len(preferred_skills))
-    #skill_score = (required_score * 0.8) + (preferred_score * 0.2)
-    # for scoring we only care “did I match each JD skill at least once?”
+    # for scoring we only care "did I match each JD skill at least once?"
     def binary_score(src, target, threshold=0.7):
             hits = 0
             for t in target:
@@ -184,15 +61,14 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
     # overall skills = weighted average, still bounded [0..1]
     skill_score     = (required_score * 0.8) + (preferred_score * 0.2)
 
-    # Pull out raw values
+    # raw values
     raw_resume_exp = resume.get("years_of_experience", 0)
     raw_job_exp    = job.get("required_experience", 0)
 
-    # Log them before any casting
+    # log them before any casting
     #st.write("DEBUG raw_resume_exp:", raw_resume_exp, "(", type(raw_resume_exp), ")")
     #st.write("DEBUG raw_job_exp:   ", raw_job_exp,    "(", type(raw_job_exp),    ")")
 
-    # (Your existing parsing logic here)
     if isinstance(raw_resume_exp, str):
         resume_exp = int(''.join(filter(str.isdigit, raw_resume_exp)) or 0)
     else:
@@ -223,7 +99,7 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
         resume_info.get("past_job_titles", []),
         job_info   .get("title",         ""),
         model,
-        #logger=lambda msg: st.write("🔍 DEBUG:", msg)
+
     )
     ### st.write(f"🔍 Best Title Pair (MiniLM): {title_pair[0]!r} ↔ {title_pair[1]!r} @ {bi_pct:.2f}%") for demo
 
@@ -248,8 +124,6 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
     resume_soft_skills = normalize_soft_skills(raw_resume_soft, model, threshold=0.4)
     job_soft_skills    = normalize_soft_skills(raw_job_soft,    model, threshold=0.4)
 
-
-    # now compare resume_soft_skills vs. job_soft_skills just like you do for required_skills
     soft_matches = sim_list(resume_soft_skills, job_soft_skills)
     soft_score = len(soft_matches) / max(1, len(job_soft_skills))
 
@@ -258,7 +132,6 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
     final_score = (
         skill_score * 0.4 +
         exp_score * 0.2 +
-        #title_score * 0.2 +
         bi_frac * 0.2 +
         edu_score * 0.1 +
         soft_score * 0.1
@@ -269,16 +142,13 @@ def compare_resume_and_job(resume: dict, job: dict, model, explain: bool = False
         "preferred_skills":  preferred_score,
         "overall_skills":    skill_score,
         "experience":        exp_score,
-        # (you can keep the old title_score if you want)
         "title_bi":          bi_pct,
-        #"title_ce":          ce_pct,
         "education":         edu_score,
         "soft_skills":       soft_score,
         "final":             final_score
     }
 
 
-# Compare button functionality using session state
 if "clicked" not in st.session_state:
     st.session_state["clicked"] = False
 
@@ -309,20 +179,17 @@ if st.session_state["clicked"]:
                 scores = compare_resume_and_job(resume_info, job_info, model)
                 ##st.write(f"✅ MiniLM embeddings took {time.time() - t1:.1f}s")
                 print(f"[LOG]: MiniLM embeddings call finished and took {time.time() - t1:.1f}s")
-                # Final
+
                 st.success("✅ Comparison Complete")
                 st.metric("🎯 Total Match", f"{scores['final']*100:.2f}%")
 
-                # Breakdown: 2 columns for example
                 col1, col2 = st.columns(2)
                 col1.metric("🛠 Required Skills",f"{scores['required_skills']*100:.2f}%")
                 col1.metric("⭐ Preferred Skills",f"{scores['preferred_skills']*100:.2f}%")
                 col1.metric("🔧 Overall Skills",f"{scores['overall_skills']*100:.2f}%")
                 ### col1.metric("🔡 Title Match (MiniLM)",f"{scores['title_bi']:.2f}%") demo
 
-                #col2.metric("🔡 Title Match (Cross-Encoder)",f"{scores['title_ce']:.2f}%")
                 col2.metric("📅 Experience",f"{scores['experience']*100:.2f}%")
-                #col2.metric("🏷 Job Title Match",f"{scores['title']*100:.2f}%")
                 col2.metric("🎓 Education",f"{scores['education']*100:.2f}%")
                 col2.metric("🤝 Soft Skills",f"{scores['soft_skills']*100:.2f}%")
 
@@ -352,7 +219,7 @@ if st.session_state["clicked"]:
                 st.subheader("🔍 Extracted Resume Info")
                 st.table(resume_df)
 
-                # Job Info table
+                # job Info table
                 job_df = pd.DataFrame({
                     "Field": [
                         "Title",
@@ -427,7 +294,6 @@ for rec in records:
     job_title = job_info.get('title', 'No title available')
     overall_score = scores.get('final', 0) * 100
 
-    # This is the only expander now
     with st.expander(f"📝 {job_title} — {overall_score:.2f}% match"):
         st.write(f"📄 **Resume File Name**: {rec.resume_name}")
 

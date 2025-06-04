@@ -1,8 +1,23 @@
+'''
+normalizers.py
+
+This module provides functions and data structures to normalize and canonicalize
+skill and title strings. It includes:
+- SKILL_ONTOLOGY: A mapping of canonical technical skills to their variant names.
+- SOFT_SKILL_TAXONOMY: A mapping of canonical soft skills to their variant names.
+- TITLE_SYNONYMS: Common job title synonyms for normalization.
+- Functions to explode parenthesized skill lists, normalize technical skills,
+  normalize soft skills using embedding similarity, and normalize job titles.
+'''
 import re
 from sentence_transformers import util
 import torch
-
-
+# ------------------------------------------------------------------------------
+# Technical Skill Ontology
+#
+# Maps a canonical skill key to a list of known variants/aliases.
+# Used to map raw skill strings to a consistent canonical form.
+# ------------------------------------------------------------------------------
 SKILL_ONTOLOGY = {
     # Programming & Tech Stacks (existing + extended)
     "python":       ["python", "py", "jupyter", "jupyter notebook", "jupyterlab", "pandas", "numpy", "scipy", "matplotlib", "seaborn"],
@@ -92,6 +107,15 @@ VARIANT_TO_CANONICAL = {
 }
 
 def explode_parens(skill_str):
+    '''
+    Split a skill string containing parentheses or comma/slash-separated lists into individual items.
+
+    Parameters:
+        skill_str (str): A raw skill string, possibly containing parentheses or separators.
+
+    Returns:
+        list[str]: A list of substrings, with parentheses and comma/slash splits exploded into separate items.
+    '''
     base, *parens = re.split(r"\(|\)", skill_str)
     items = [base] + parens
     # split comma/slash lists too
@@ -101,6 +125,21 @@ def explode_parens(skill_str):
     return [i.strip() for i in flat if i.strip()]
 
 def normalize_skills(raw_skills):
+    '''
+    Normalize a list of raw technical skill strings into canonical skill keys.
+
+    Steps:
+    1) For each raw skill string, call explode_parens() to handle parenthetical or combined lists.
+    2) Lowercase and strip non-alphanumeric/+-/. characters.
+    3) Map each cleaned string to its canonical key via VARIANT_TO_CANONICAL lookup.
+    4) Deduplicate while preserving order.
+
+    Parameters:
+        raw_skills (list[str]): A list of skill strings extracted from a resume or job description.
+
+    Returns:
+        list[str]: A deduplicated list of canonical skill keys.
+    '''
     normalized = []
     for s in raw_skills:
         # first, explode any parentheses into sub-skills
@@ -114,7 +153,12 @@ def normalize_skills(raw_skills):
                 normalized.append(canon)
     return normalized
 
-
+# ------------------------------------------------------------------------------
+# Soft Skill Taxonomy
+#
+# Maps a canonical soft-skill key to its variant names. Used for exact lookup
+# and embedding-based similarity if no exact match is found.
+# ------------------------------------------------------------------------------
 SOFT_SKILL_TAXONOMY = {
     "teamwork":            ["team player", "teamplayer","teamwork", "collaborates well", "collaboration", "works well with others"],
     "communication":       ["communication", "communicator", "verbal communication", "written communication", "presents ideas clearly", "active listening"],
@@ -139,7 +183,7 @@ SOFT_SKILL_TAXONOMY = {
 }
 
 
-# Build reverse lookup: variant -> canonical
+# build reverse lookup: variant -> canonical
 VARIANT_TO_CANONICAL_SOFT = {
     variant: canon
     for canon, variants in SOFT_SKILL_TAXONOMY.items()
@@ -159,17 +203,14 @@ def normalize_soft_skills(raw_skills, model, threshold=0.4):
         # strip everything except letters, numbers, hyphens and spaces
         key = re.sub(r"[^a-z0-9\- ]+", "", key)
         
-        # 1) exact taxonomy lookup
         canon = VARIANT_TO_CANONICAL_SOFT.get(key)
         if canon:
             normalized.append(canon)
             continue
         
-        # 2) fallback to embedding‐based matching
         candidates = list(SOFT_SKILL_TAXONOMY.keys())
-        # embed your unknown key plus all candidate labels
         embeddings = model.encode([key] + candidates, convert_to_tensor=True)
-        sims = util.cos_sim(embeddings[0:1], embeddings[1:]).squeeze(0)  # shape=(len(candidates),)
+        sims = util.cos_sim(embeddings[0:1], embeddings[1:]).squeeze(0)  
         
         best_idx = int(torch.argmax(sims))
         if sims[best_idx] >= threshold:
