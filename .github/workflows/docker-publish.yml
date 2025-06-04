@@ -41,14 +41,14 @@ jobs:
 
       # These two steps only fire after secrets are added
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/Diego')
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main')
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push image
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/Diego')
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main')
         uses: docker/build-push-action@v5
         with:
           context: .
