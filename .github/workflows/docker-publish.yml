@@ -2,9 +2,9 @@ name: Build (and, once secrets exist, push) Docker image
 
 on:
   push:
-    branches: [ Diego ]
+    branches: [Main]
   pull_request:
-    branches: [ Diego ]
+    branches: [Main]
 
 jobs:
   docker:
